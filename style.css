@@ -113,7 +113,6 @@ body {
 
 .control-button:hover {
     background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.05);
 }
 
 #theme-toggle, #lang-toggle {
@@ -127,15 +126,53 @@ body {
 }
 
 #theme-toggle:hover, #lang-toggle:hover {
-    transform: scale(1.05);
+    transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.2);
 }
 
-.divider {
-    width: 1px;
-    height: 20px;
-    background: rgba(255, 255, 255, 0.2);
-    margin: 0 5px;
+#theme-toggle:active, #lang-toggle:active {
+    transform: translateY(1px);
+}
+
+.light-icon, .dark-icon, .lang-text {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+#theme-toggle:hover .light-icon,
+#theme-toggle:hover .dark-icon,
+#lang-toggle:hover .lang-text {
+    transform: translateY(-1px);
+}
+
+#export-xlsx,
+#import-xlsx {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+#export-xlsx:hover,
+#import-xlsx:hover {
+    background-color: var(--hover-color);
+}
+
+#export-xlsx:active,
+#import-xlsx:active {
+}
+
+.export-icon,
+.import-icon {
+    font-size: 1.2em;
+    display: inline-block;
+}
+
+#export-xlsx:hover .export-icon {
+}
+
+#import-xlsx:hover .import-icon {
 }
 
 /* تحديث تنسيق الاتجاه للغة الإنجليزية */
@@ -200,11 +237,19 @@ html[data-theme="light"] .control-button:hover {
     z-index: 2;
 }
 
+.header-buttons {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-buttons .control-button {
+    flex: 0 0 auto;
+}
+
 #history-toggle {
     position: relative;
-    left: 0;
-    width: 100%;
-    height: 40px;
     border: none;
     background: var(--button-bg);
     color: var(--text-color);
@@ -216,6 +261,7 @@ html[data-theme="light"] .control-button:hover {
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 10;
+    padding: 8px;
 }
 
 #history-toggle.active {
@@ -398,9 +444,48 @@ button:active::after {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 0 5px 0;
-    margin-bottom: 5px;
+    padding: 10px;
     border-bottom: 1px solid var(--display-border);
+    flex-wrap: wrap;
+}
+
+.history-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.history-controls .control-button {
+    padding: 4px;
+    color: var(--text-color);
+}
+
+.clear-history {
+    background: var(--button-bg);
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transform: translateY(0);
+}
+
+.clear-history:hover {
+    background: var(--button-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.clear-history:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .history-header h3 {
@@ -408,23 +493,6 @@ button:active::after {
     font-weight: 600;
     color: var(--text-color);
     margin: 0;
-}
-
-.clear-history {
-    background: transparent;
-    color: var(--text-color);
-    border: 1px solid var(--display-border);
-    padding: 2px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.85em;
-}
-
-.clear-history:hover {
-    background: rgba(255, 0, 0, 0.1);
-    color: #ff4444;
-    border-color: #ff4444;
 }
 
 .history-list {
@@ -656,6 +724,19 @@ input:focus-visible {
     display: block;
 }
 
+.divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 5px;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 8px;
+    margin-right: 8px;
+}
+
 /* Responsive Design */
 @media screen and (max-width: 480px) {
     .calculator {
@@ -679,7 +760,7 @@ input:focus-visible {
 
     .buttons {
         gap: 6px;
-        grid-template-columns: repeat(4, 1fr) !important;
+        grid-template-columns: repeat(2, 1fr) !important;
     }
 
     button {
@@ -761,5 +842,89 @@ input:focus-visible {
 
     #expression {
         font-size: 1.4rem;
+    }
+}
+
+/* Custom Popup Styles */
+.popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.popup-overlay.show {
+    display: flex;
+}
+
+.popup-content {
+    background: var(--calculator-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 90%;
+    width: 320px;
+    border: 1px solid var(--display-border);
+    animation: popupIn 0.3s ease-out;
+}
+
+.popup-content h3 {
+    color: var(--text-color);
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+.popup-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.popup-btn {
+    padding: 8px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: all 0.2s ease;
+}
+
+.confirm-btn {
+    background: var(--equals-bg);
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: var(--equals-hover);
+    transform: translateY(-2px);
+}
+
+.cancel-btn {
+    background: var(--button-bg);
+    color: var(--text-color);
+}
+
+.cancel-btn:hover {
+    background: var(--button-hover);
+    transform: translateY(-2px);
+}
+
+@keyframes popupIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
     }
 }

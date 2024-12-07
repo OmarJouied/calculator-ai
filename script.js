@@ -14,7 +14,12 @@ const translations = {
         expressionPlaceholder: 'أدخل التعبير الرياضي',
         history: 'السجل',
         clearHistory: 'مسح السجل',
-        toggleHistory: 'عرض السجل'
+        toggleHistory: 'عرض السجل',
+        exportToExcel: 'تصدير السجل إلى ملف Excel',
+        importFromExcel: 'استيراد السجل من ملف Excel',
+        confirmClearHistory: 'هل أنت متأكد من مسح كل السجل؟',
+        yes: 'نعم',
+        no: 'لا'
     },
     en: {
         title: 'Scientific Calculator',
@@ -22,7 +27,12 @@ const translations = {
         expressionPlaceholder: 'Enter mathematical expression',
         history: 'History',
         clearHistory: 'Clear History',
-        toggleHistory: 'Show History'
+        toggleHistory: 'Show History',
+        exportToExcel: 'Export History to Excel',
+        importFromExcel: 'Import History from Excel',
+        confirmClearHistory: 'Are you sure you want to clear all history?',
+        yes: 'Yes',
+        no: 'No'
     }
 };
 
@@ -70,11 +80,20 @@ function addToHistory(expression, result) {
     updateHistoryDisplay();
 }
 
+// Custom popup functions
+function showPopup() {
+    const popup = document.getElementById('confirmPopup');
+    popup.classList.add('show');
+}
+
+function hidePopup() {
+    const popup = document.getElementById('confirmPopup');
+    popup.classList.remove('show');
+}
+
 // Function to clear history
 function clearHistory() {
-    calculationHistory = [];
-    localStorage.removeItem('calculatorHistory');
-    updateHistoryDisplay();
+    showPopup();
 }
 
 // Function to update history display
@@ -165,6 +184,8 @@ function handleError(error) {
         errorMessage = 'ln(x) is only defined for x > 0';
     } else if (error.message.includes('log_domain')) {
         errorMessage = 'log(x) is only defined for x > 0';
+    } else if (error.message.includes('undefined')) {
+        errorMessage = 'Undefined trigonometric value';
     }
     
     result.value = errorMessage;
@@ -191,7 +212,7 @@ function calculate() {
         // Replace mathematical functions with their JavaScript equivalents
         exp = exp.replace(/sin\(/g, 'Math.sin(')
             .replace(/cos\(/g, 'Math.cos(')
-            .replace(/tan\(/g, 'Math.tan(')
+            .replace(/tan\(/g, '(function(x) { const c = Math.cos(x); if (Math.abs(c) < 1e-10) throw new Error("undefined"); return Math.sin(x)/c; })(')
             .replace(/sqrt\(/g, 'Math.sqrt(')
             .replace(/log\(/g, 'Math.log10(')
             .replace(/ln\(/g, 'Math.log(')
@@ -201,7 +222,7 @@ function calculate() {
         if (!settings.isRadianMode) {
             exp = exp.replace(/Math\.sin\((.*?)\)/g, (match, p1) => `Math.sin(${p1} * Math.PI / 180)`);
             exp = exp.replace(/Math\.cos\((.*?)\)/g, (match, p1) => `Math.cos(${p1} * Math.PI / 180)`);
-            exp = exp.replace(/Math\.tan\((.*?)\)/g, (match, p1) => `Math.tan(${p1} * Math.PI / 180)`);
+            exp = exp.replace(/Math\.tan\((.*?)\)/g, (match, p1) => `(function(x) { const c = Math.cos(x * Math.PI / 180); if (Math.abs(c) < 1e-10) throw new Error("undefined"); return Math.sin(x * Math.PI / 180)/c; })(${p1})`);
         }
         
         // Validate logarithm inputs
@@ -303,6 +324,14 @@ function updateTranslations(lang) {
             } else {
                 element.textContent = translations[lang][key];
             }
+        }
+    });
+    
+    // Update title translations
+    document.querySelectorAll('[data-translate-title]').forEach(element => {
+        const key = element.getAttribute('data-translate-title');
+        if (translations[lang][key]) {
+            element.title = translations[lang][key];
         }
     });
     
@@ -445,4 +474,102 @@ document.addEventListener('keydown', function(event) {
 // Load history on page load
 document.addEventListener('DOMContentLoaded', () => {
     updateHistoryDisplay();
+    
+    // Setup popup event listeners
+    const confirmYes = document.getElementById('confirmYes');
+    const confirmNo = document.getElementById('confirmNo');
+    const popup = document.getElementById('confirmPopup');
+    
+    confirmYes.addEventListener('click', () => {
+        calculationHistory = [];
+        localStorage.removeItem('calculatorHistory');
+        updateHistoryDisplay();
+        const currentLang = html.getAttribute('lang') || 'ar';
+        showNotification(translations[currentLang].clearHistory);
+        hidePopup();
+    });
+    
+    confirmNo.addEventListener('click', hidePopup);
+    
+    // Close popup when clicking outside
+    popup.addEventListener('click', (e) => {
+        if (e.target === popup) {
+            hidePopup();
+        }
+    });
+    
+    // Close popup on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && popup.classList.contains('show')) {
+            hidePopup();
+        }
+    });
+});
+
+// Excel Export/Import Functions
+function exportToExcel() {
+    const wb = XLSX.utils.book_new();
+    const data = calculationHistory.map(item => ({
+        Expression: item.expression,
+        Result: item.result
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "Calculator History");
+    XLSX.writeFile(wb, "calculator_history.xlsx");
+}
+
+function importFromExcel(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        // Create new history items with timestamps
+        const newHistoryItems = jsonData.map(row => {
+            if (row.Expression && row.Result) {
+                return {
+                    expression: row.Expression,
+                    result: row.Result,
+                    timestamp: Date.now()
+                };
+            }
+            return null;
+        }).filter(item => item !== null);
+        
+        // Add new items to history array
+        calculationHistory = [...newHistoryItems, ...calculationHistory];
+        
+        // Keep only last 50 calculations if exceeded
+        // if (calculationHistory.length > 50) {
+        //     calculationHistory = calculationHistory.slice(0, 50);
+        // }
+        
+        // Save to localStorage and update display
+        localStorage.setItem('calculatorHistory', JSON.stringify(calculationHistory));
+        updateHistoryDisplay();
+        
+        // Show success notification
+        const currentLang = html.getAttribute('lang') || 'ar';
+        showNotification(translations[currentLang].importFromExcel);
+    };
+    
+    reader.readAsArrayBuffer(file);
+}
+
+// Event Listeners for Excel buttons
+document.getElementById('export-xlsx').addEventListener('click', exportToExcel);
+
+const importInput = document.createElement('input');
+importInput.type = 'file';
+importInput.accept = '.xlsx,.xls,.csv';
+importInput.style.display = 'none';
+importInput.addEventListener('change', importFromExcel);
+document.body.appendChild(importInput);
+
+document.getElementById('import-xlsx').addEventListener('click', () => {
+    importInput.click();
 });
